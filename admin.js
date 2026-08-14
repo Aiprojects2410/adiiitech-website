@@ -1217,18 +1217,6 @@ document.addEventListener('DOMContentLoaded', () => {
       pwInput.type = isPass ? 'text' : 'password';
       toggleBtn.style.color = isPass ? 'var(--neon-cyan)' : 'var(--text-muted)';
     });
-  }
-
-  // Quick fill default credentials on click
-  const quickFill = document.getElementById('quick-fill-pw');
-  if (quickFill) {
-    quickFill.addEventListener('click', () => {
-      if (emailInput) emailInput.value = 'collab.ahad@gmail.com';
-      if (pwInput) pwInput.value = 'adiiitech2025';
-      tryLogin();
-    });
-  }
-
   if (loginBtn) loginBtn.addEventListener('click', tryLogin);
   if (emailInput) emailInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
   if (pwInput) pwInput.addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
