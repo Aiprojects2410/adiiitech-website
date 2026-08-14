@@ -408,4 +408,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 3. Background Cloud Sync with Supabase
   syncFromCloud();
+
+  // 4. Secret Admin Shortcut (Ctrl + Shift + A or Triple-click on logo)
+  window.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+      window.location.href = 'admin.html';
+    }
+  });
+
+  let logoClicks = 0;
+  const logo = document.getElementById('nav-logo-link');
+  if (logo) {
+    logo.addEventListener('click', (e) => {
+      logoClicks++;
+      if (logoClicks >= 3) {
+        e.preventDefault();
+        window.location.href = 'admin.html';
+      }
+      setTimeout(() => { logoClicks = 0; }, 1500);
+    });
+  }
 });
