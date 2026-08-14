@@ -1,4 +1,4 @@
-/* ADIIITECH_ admin.js syntax repair loader */
+/* ADIIITECH_ admin.js syntax + login repair loader */
 (function () {
   fetch('admin.js', { cache: 'no-store' })
     .then(r => {
@@ -13,7 +13,13 @@
         return;
       }
 
-      const repaired = code.replace(broken, fixed);
+      // Keep the configured default password as Adiiitech2025.
+      const repaired = code.replace(broken, fixed).replace(/adiiitech2025/g, 'Adiiitech2025');
+      // Migrate only the old built-in default. Never overwrite a custom password.
+      if (localStorage.getItem('adt_admin_pw') === 'adiiitech2025') {
+        localStorage.setItem('adt_admin_pw', 'Adiiitech2025');
+      }
+
       const originalAddEventListener = document.addEventListener;
       const domReadyAlreadyFired = document.readyState !== 'loading';
 
