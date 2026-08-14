@@ -347,19 +347,65 @@ document.body.appendChild(cursorGlow);
 document.addEventListener('mousemove', e => { cursorGlow.style.left = e.clientX+'px'; cursorGlow.style.top = e.clientY+'px'; });
 
 /* ══════════════════════════
-   INIT ALL
+   INIT ALL & SUPABASE CLOUD SYNC
 ══════════════════════════ */
+async function syncFromCloud() {
+  if (!window.SupabaseDB) return;
+  try {
+    const [cloudApps, cloudTips, cloudResources, cloudSettings] = await Promise.all([
+      window.SupabaseDB.getApps(),
+      window.SupabaseDB.getTips(),
+      window.SupabaseDB.getResources(),
+      window.SupabaseDB.getSettings()
+    ]);
+
+    let changed = false;
+    if (cloudApps && cloudApps.length) {
+      localStorage.setItem(SITE_KEYS.apps, JSON.stringify(cloudApps));
+      renderApps();
+      changed = true;
+    }
+    if (cloudTips && cloudTips.length) {
+      localStorage.setItem(SITE_KEYS.tips, JSON.stringify(cloudTips));
+      renderTips();
+      changed = true;
+    }
+    if (cloudResources && cloudResources.length) {
+      localStorage.setItem(SITE_KEYS.resources, JSON.stringify(cloudResources));
+      renderResources();
+      changed = true;
+    }
+    if (cloudSettings) {
+      localStorage.setItem(SITE_KEYS.settings, JSON.stringify(cloudSettings));
+      if (cloudSettings.social) localStorage.setItem(SITE_KEYS.social, JSON.stringify(cloudSettings.social));
+      renderSocial();
+      renderSettings();
+      changed = true;
+    }
+
+    if (changed) {
+      initFilters();
+      initDownloadBtns();
+    }
+  } catch (err) {
+    console.warn('Cloud sync error (fallback active):', err);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  // Render dynamic content from localStorage
+  // 1. Instant local render
   renderApps();
   renderTips();
   renderResources();
   renderSocial();
   renderSettings();
 
-  // Init interactions (after dynamic content rendered)
+  // 2. Init interactions
   initReveal();
   initFilters();
   initDownloadBtns();
   initActiveNav();
+
+  // 3. Background Cloud Sync with Supabase
+  syncFromCloud();
 });

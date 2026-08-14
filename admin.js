@@ -379,12 +379,12 @@ function appFormHTML(app = {}) {
 }
 
 function openAddAppModal() {
-  openModal('Add New App', appFormHTML(), () => {
+  openModal('Add New App', appFormHTML(), async () => {
     const name = document.getElementById('f-name').value.trim();
     const url  = document.getElementById('f-url').value.trim();
     if (!name) { toast('App ka naam dalna zaroori hai!', 'error'); return; }
     const apps = getData('apps');
-    apps.push({
+    const newApp = {
       id: Date.now(),
       name,
       version: document.getElementById('f-version').value.trim() || 'MOD',
@@ -395,11 +395,22 @@ function openAddAppModal() {
       colorTo: document.getElementById('f-color2').value,
       glowColor: document.getElementById('f-glow').value,
       safe: document.getElementById('f-safe').value === '1',
-    });
+    };
+    apps.push(newApp);
     setData('apps', apps);
     closeModal();
     renderApps();
     toast('App add ho gaya! 🚀');
+
+    // Supabase Cloud Sync
+    if (window.SupabaseDB) {
+      const saved = await window.SupabaseDB.addApp(newApp);
+      if (saved && saved.id) {
+        newApp.id = saved.id;
+        setData('apps', apps);
+        renderApps();
+      }
+    }
   });
   syncColorInputs('f-color1', 'f-color1-text');
   syncColorInputs('f-color2', 'f-color2-text');
@@ -409,7 +420,7 @@ function editApp(id) {
   const apps = getData('apps');
   const app = apps.find(a => a.id === id);
   if (!app) return;
-  openModal('Edit App', appFormHTML(app), () => {
+  openModal('Edit App', appFormHTML(app), async () => {
     const name = document.getElementById('f-name').value.trim();
     if (!name) { toast('App ka naam dalna zaroori hai!', 'error'); return; }
     Object.assign(app, {
@@ -427,17 +438,27 @@ function editApp(id) {
     closeModal();
     renderApps();
     toast('App update ho gaya! ✅');
+
+    // Supabase Cloud Sync
+    if (window.SupabaseDB) {
+      await window.SupabaseDB.updateApp(id, app);
+    }
   });
   syncColorInputs('f-color1', 'f-color1-text');
   syncColorInputs('f-color2', 'f-color2-text');
 }
 
 function deleteApp(id) {
-  confirm('App Delete Karo?', 'Ye app permanently hata diya jayega. Undo nahi hoga.', () => {
+  confirm('App Delete Karo?', 'Ye app permanently hata diya jayega. Undo nahi hoga.', async () => {
     let apps = getData('apps').filter(a => a.id !== id);
     setData('apps', apps);
     renderApps();
     toast('App delete ho gaya.', 'info');
+
+    // Supabase Cloud Sync
+    if (window.SupabaseDB) {
+      await window.SupabaseDB.deleteApp(id);
+    }
   });
 }
 
@@ -537,24 +558,35 @@ function tipFormHTML(tip = {}) {
 }
 
 function openAddTipModal() {
-  openModal('Add New Tip', tipFormHTML(), () => {
+  openModal('Add New Tip', tipFormHTML(), async () => {
     const title = document.getElementById('t-title').value.trim();
     if (!title) { toast('Title dalna zaroori hai!', 'error'); return; }
     const tips = getData('tips');
-    tips.push({
+    const newTip = {
       id: Date.now(),
       title,
       category: document.getElementById('t-cat').value,
-      tag: document.getElementById('t-tag').value.trim(),
+      tag: document.getElementById('t-tag').value.trim() || '⚡ Trick',
       description: document.getElementById('t-desc').value.trim(),
       readMoreUrl: document.getElementById('t-url').value.trim() || '#',
       glowColor: document.getElementById('t-glow').value,
       iconColor: '#00f5ff',
-    });
+    };
+    tips.push(newTip);
     setData('tips', tips);
     closeModal();
     renderTips();
     toast('Tip add ho gaya! 💡');
+
+    // Supabase Cloud Sync
+    if (window.SupabaseDB) {
+      const saved = await window.SupabaseDB.addTip(newTip);
+      if (saved && saved.id) {
+        newTip.id = saved.id;
+        setData('tips', tips);
+        renderTips();
+      }
+    }
   });
 }
 
@@ -562,13 +594,13 @@ function editTip(id) {
   const tips = getData('tips');
   const tip = tips.find(t => t.id === id);
   if (!tip) return;
-  openModal('Edit Tip', tipFormHTML(tip), () => {
+  openModal('Edit Tip', tipFormHTML(tip), async () => {
     const title = document.getElementById('t-title').value.trim();
     if (!title) { toast('Title dalna zaroori hai!', 'error'); return; }
     Object.assign(tip, {
       title,
       category: document.getElementById('t-cat').value,
-      tag: document.getElementById('t-tag').value.trim(),
+      tag: document.getElementById('t-tag').value.trim() || '⚡ Trick',
       description: document.getElementById('t-desc').value.trim(),
       readMoreUrl: document.getElementById('t-url').value.trim() || '#',
       glowColor: document.getElementById('t-glow').value,
@@ -577,14 +609,24 @@ function editTip(id) {
     closeModal();
     renderTips();
     toast('Tip update ho gaya! ✅');
+
+    // Supabase Cloud Sync
+    if (window.SupabaseDB) {
+      await window.SupabaseDB.updateTip(id, tip);
+    }
   });
 }
 
 function deleteTip(id) {
-  confirm('Tip Delete Karo?', 'Ye tip permanently hata di jayegi.', () => {
+  confirm('Tip Delete Karo?', 'Ye tip permanently hata di jayegi.', async () => {
     setData('tips', getData('tips').filter(t => t.id !== id));
     renderTips();
     toast('Tip delete ho gaya.', 'info');
+
+    // Supabase Cloud Sync
+    if (window.SupabaseDB) {
+      await window.SupabaseDB.deleteTip(id);
+    }
   });
 }
 
@@ -687,11 +729,11 @@ function resourceFormHTML(r = {}) {
 }
 
 function openAddResourceModal() {
-  openModal('Add New Resource', resourceFormHTML(), () => {
+  openModal('Add New Resource', resourceFormHTML(), async () => {
     const title = document.getElementById('r-title').value.trim();
     if (!title) { toast('Title dalna zaroori hai!', 'error'); return; }
     const resources = getData('resources');
-    resources.push({
+    const newRes = {
       id: Date.now(),
       title,
       type: document.getElementById('r-type').value.trim() || 'Resource',
@@ -699,11 +741,22 @@ function openAddResourceModal() {
       description: document.getElementById('r-desc').value.trim(),
       downloadUrl: document.getElementById('r-url').value.trim() || '#',
       iconColor: document.getElementById('r-color').value,
-    });
+    };
+    resources.push(newRes);
     setData('resources', resources);
     closeModal();
     renderResources();
     toast('Resource add ho gaya! 📁');
+
+    // Supabase Cloud Sync
+    if (window.SupabaseDB) {
+      const saved = await window.SupabaseDB.addResource(newRes);
+      if (saved && saved.id) {
+        newRes.id = saved.id;
+        setData('resources', resources);
+        renderResources();
+      }
+    }
   });
 }
 
@@ -711,7 +764,7 @@ function editResource(id) {
   const resources = getData('resources');
   const r = resources.find(x => x.id === id);
   if (!r) return;
-  openModal('Edit Resource', resourceFormHTML(r), () => {
+  openModal('Edit Resource', resourceFormHTML(r), async () => {
     const title = document.getElementById('r-title').value.trim();
     if (!title) { toast('Title dalna zaroori hai!', 'error'); return; }
     Object.assign(r, {
@@ -726,14 +779,24 @@ function editResource(id) {
     closeModal();
     renderResources();
     toast('Resource update ho gaya! ✅');
+
+    // Supabase Cloud Sync
+    if (window.SupabaseDB) {
+      await window.SupabaseDB.updateResource(id, r);
+    }
   });
 }
 
 function deleteResource(id) {
-  confirm('Resource Delete Karo?', 'Ye resource permanently hata diya jayega.', () => {
+  confirm('Resource Delete Karo?', 'Ye resource permanently hata diya jayega.', async () => {
     setData('resources', getData('resources').filter(r => r.id !== id));
     renderResources();
     toast('Resource delete ho gaya.', 'info');
+
+    // Supabase Cloud Sync
+    if (window.SupabaseDB) {
+      await window.SupabaseDB.deleteResource(id);
+    }
   });
 }
 
@@ -795,13 +858,24 @@ function renderSocial() {
 }
 
 function saveSocial() {
-  setData('social', {
+  const socialData = {
     telegram:  document.getElementById('s-telegram').value.trim() || '#',
     instagram: document.getElementById('s-instagram').value.trim() || '#',
     youtube:   document.getElementById('s-youtube').value.trim() || '#',
     whatsapp:  document.getElementById('s-whatsapp').value.trim() || '#',
-  });
+  };
+  setData('social', socialData);
   toast('Social links save ho gaye! 🔗');
+
+  if (window.SupabaseDB) {
+    const s = getData('settings');
+    window.SupabaseDB.saveSettings({
+      ...s,
+      social: socialData,
+      email: getEmail(),
+      password: getPassword()
+    });
+  }
 }
 
 /* ══════════════════════════
@@ -901,12 +975,16 @@ function renderSettings() {
       </div>
 
       <div class="settings-card">
-        <div class="settings-card-title">// DANGER ZONE</div>
-        <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem">Ye actions irreversible hain. Dhyan se karo.</p>
+        <div class="settings-card-title">// CLOUD SYNC & DANGER ZONE</div>
+        <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem">Supabase Cloud Database ke sath sync karein ya defaults reset karein.</p>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
-          <button class="btn-save-section" onclick="resetToDefaults()" style="background:var(--neon-red);box-shadow:0 0 15px var(--glow-red)">
+          <button class="btn-save-section" onclick="syncAllToSupabase()" style="background:var(--neon-purple);box-shadow:0 0 15px var(--glow-purple);margin-top:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 15a4.5 4.5 0 00-1.8-8.6 6 6 0 00-11.4 1.8 4 4 0 00-1.8 7.8"/><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/></svg>
+            PUSH ALL TO SUPABASE CLOUD
+          </button>
+          <button class="btn-save-section" onclick="resetToDefaults()" style="background:var(--neon-red);box-shadow:0 0 15px var(--glow-red);margin-top:0;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v6h6M21 12A9 9 0 013.5 7.5M21 22v-6h-6M3 12a9 9 0 0017.5 4.5"/></svg>
-            RESET ALL DATA
+            RESET ALL LOCAL DATA
           </button>
         </div>
       </div>
@@ -925,6 +1003,16 @@ function saveAdminEmail() {
   }
   localStorage.setItem(KEYS.email, newEmail);
   toast('Admin Login ID update ho gaya! 📧');
+
+  if (window.SupabaseDB) {
+    const s = getData('settings');
+    window.SupabaseDB.saveSettings({
+      ...s,
+      social: getData('social'),
+      email: newEmail,
+      password: getPassword()
+    });
+  }
 }
 
 function saveSettings() {
@@ -934,6 +1022,15 @@ function saveSettings() {
   s.aboutText2 = document.getElementById('st-about2').value.trim() || s.aboutText2;
   setData('settings', s);
   toast('Site content save ho gaya! ✅');
+
+  if (window.SupabaseDB) {
+    window.SupabaseDB.saveSettings({
+      ...s,
+      social: getData('social'),
+      email: getEmail(),
+      password: getPassword()
+    });
+  }
 }
 
 function saveStats() {
@@ -943,6 +1040,15 @@ function saveStats() {
   s.statTips      = parseInt(document.getElementById('st-tips').value) || 500;
   setData('settings', s);
   toast('Stats save ho gaye! 📊');
+
+  if (window.SupabaseDB) {
+    window.SupabaseDB.saveSettings({
+      ...s,
+      social: getData('social'),
+      email: getEmail(),
+      password: getPassword()
+    });
+  }
 }
 
 function changePassword() {
@@ -958,6 +1064,48 @@ function changePassword() {
   document.getElementById('pw-new').value = '';
   document.getElementById('pw-confirm').value = '';
   toast('Password change ho gaya! 🔐');
+
+  if (window.SupabaseDB) {
+    const s = getData('settings');
+    window.SupabaseDB.saveSettings({
+      ...s,
+      social: getData('social'),
+      email: getEmail(),
+      password: nw
+    });
+  }
+}
+
+async function syncAllToSupabase() {
+  if (!window.SupabaseDB) {
+    toast('Supabase client load nahi hua!', 'error');
+    return;
+  }
+  toast('Uploading all local data to Supabase...', 'info');
+  try {
+    const apps = getData('apps');
+    for (const a of apps) {
+      await window.SupabaseDB.addApp(a);
+    }
+    const tips = getData('tips');
+    for (const t of tips) {
+      await window.SupabaseDB.addTip(t);
+    }
+    const resources = getData('resources');
+    for (const r of resources) {
+      await window.SupabaseDB.addResource(r);
+    }
+    const s = getData('settings');
+    await window.SupabaseDB.saveSettings({
+      ...s,
+      social: getData('social'),
+      email: getEmail(),
+      password: getPassword()
+    });
+    toast('Pura data Supabase Cloud pe sync ho gaya! ☁️🚀', 'success');
+  } catch (err) {
+    toast('Sync error: ' + err.message, 'error');
+  }
 }
 
 function resetToDefaults() {
@@ -1133,4 +1281,5 @@ window.saveStats = saveStats;
 window.saveAdminEmail = saveAdminEmail;
 window.changePassword = changePassword;
 window.resetToDefaults = resetToDefaults;
+window.syncAllToSupabase = syncAllToSupabase;
 window.switchSection = switchSection;
