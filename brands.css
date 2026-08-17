@@ -720,12 +720,12 @@
   box-shadow: 0 0 20px var(--glow-purple);
 }
 
-/* ── SIGNUP MODAL ── */
+/* ── SIGNUP MODAL & FORMS ── */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 4, 12, 0.88);
-  backdrop-filter: blur(12px);
+  background: rgba(4, 4, 12, 0.92);
+  backdrop-filter: blur(16px);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -736,9 +736,9 @@
 .modal-overlay.hidden { display: none; }
 
 .brand-modal-box {
-  background: var(--bg-card);
-  border: 1px solid rgba(180, 77, 255, 0.35);
-  box-shadow: 0 0 50px rgba(180, 77, 255, 0.2);
+  background: #0d0d1a;
+  border: 1px solid rgba(180, 77, 255, 0.4);
+  box-shadow: 0 0 60px rgba(180, 77, 255, 0.25), 0 20px 80px rgba(0, 0, 0, 0.8);
   border-radius: var(--radius-lg);
   max-width: 640px;
   width: 100%;
@@ -746,7 +746,21 @@
   overflow-y: auto;
   padding: 36px 32px;
   position: relative;
+  box-sizing: border-box;
 }
+
+/* Custom Sleek Scrollbar */
+.brand-modal-box::-webkit-scrollbar {
+  width: 6px;
+}
+.brand-modal-box::-webkit-scrollbar-track {
+  background: rgba(13, 13, 26, 0.9);
+}
+.brand-modal-box::-webkit-scrollbar-thumb {
+  background: var(--neon-purple);
+  border-radius: 4px;
+}
+
 .modal-close-btn {
   position: absolute;
   top: 18px;
@@ -772,7 +786,7 @@
 }
 .modal-title {
   font-family: var(--font-display);
-  font-size: 1.6rem;
+  font-size: 1.65rem;
   color: #fff;
   margin: 0 0 6px;
 }
@@ -780,6 +794,52 @@
   font-size: 0.88rem;
   color: var(--text-secondary);
   margin: 0;
+}
+
+/* Form controls styling */
+.form-group {
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+}
+.form-label {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #fff !important;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  outline: none;
+  box-sizing: border-box;
+  transition: all var(--transition);
+}
+.form-input:focus,
+.form-textarea:focus {
+  border-color: var(--neon-purple) !important;
+  box-shadow: 0 0 16px rgba(180, 77, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+}
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.form-textarea {
+  resize: vertical;
+  line-height: 1.5;
 }
 
 .form-grid-2 {
@@ -805,17 +865,19 @@
   cursor: pointer;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
   transition: all var(--transition);
 }
 .type-radio-card input {
   margin-top: 4px;
   accent-color: var(--neon-purple);
+  width: 16px;
+  height: 16px;
 }
 .type-radio-card.active {
-  background: rgba(180, 77, 255, 0.1);
+  background: rgba(180, 77, 255, 0.12);
   border-color: var(--neon-purple);
-  box-shadow: 0 0 20px rgba(180, 77, 255, 0.2);
+  box-shadow: 0 0 20px rgba(180, 77, 255, 0.22);
 }
 .radio-body { flex: 1; }
 .radio-emoji { font-size: 1.4rem; display: block; margin-bottom: 4px; }
@@ -840,8 +902,14 @@
   padding: 12px 14px;
   color: #fff;
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   outline: none;
+  box-sizing: border-box;
+  transition: all var(--transition);
+}
+.form-select:focus {
+  border-color: var(--neon-purple);
+  box-shadow: 0 0 16px rgba(180, 77, 255, 0.3);
 }
 .form-select option {
   background: #0d0d1a;
@@ -864,13 +932,13 @@
   letter-spacing: 2px;
   font-weight: 900;
   cursor: pointer;
-  box-shadow: 0 0 25px rgba(37, 211, 102, 0.3);
+  box-shadow: 0 0 25px rgba(37, 211, 102, 0.35);
   margin-top: 14px;
   transition: all var(--transition);
 }
 .btn-submit-brand:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 35px rgba(37, 211, 102, 0.5);
+  box-shadow: 0 0 35px rgba(37, 211, 102, 0.6);
 }
 .form-secure-note {
   text-align: center;
