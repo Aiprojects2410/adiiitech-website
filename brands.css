@@ -2,6 +2,25 @@
    ADIIITECH_ — brands.css (Brand Portal Styles)
    ═══════════════════════════════════════════════ */
 
+/* ── CANVAS & BACKGROUND ── */
+#particles-canvas, #particle-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  display: block;
+}
+
+body.brands-body {
+  background: #06060f;
+  color: var(--text-primary);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
 /* ── BADGES & NAV ── */
 .logo-badge-brands {
   font-family: var(--font-display);
