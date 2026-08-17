@@ -13,6 +13,7 @@ const KEYS = {
   resources: 'adt_resources',
   social:    'adt_social',
   settings:  'adt_settings',
+  brands:    'adt_brands_list',
   email:     'adt_admin_email',
   password:  'adt_admin_pw',
   auth:      'adt_auth',
@@ -190,6 +191,7 @@ function switchSection(name) {
 function renderSection(name) {
   const map = {
     dashboard: renderDashboard,
+    brands:    renderBrands,
     apps:      renderApps,
     tips:      renderTips,
     resources: renderResources,
@@ -207,6 +209,7 @@ function renderDashboard() {
   const apps = getData('apps');
   const tips = getData('tips');
   const resources = getData('resources');
+  const brands = getData('brands');
   const social = getData('social');
   const activeSocial = Object.values(social).filter(v => v && v !== '#').length;
 
@@ -219,27 +222,31 @@ function renderDashboard() {
     </div>
 
     <div class="dash-stats">
-      <div class="stat-card purple">
+      <div class="stat-card purple" style="cursor:pointer" onclick="switchSection('brands')">
+        <div class="stat-value">${brands.length}</div>
+        <div class="stat-label">Brand Inquiries 💼</div>
+      </div>
+      <div class="stat-card cyan">
         <div class="stat-value">${apps.length}</div>
         <div class="stat-label">Modded Apps</div>
       </div>
-      <div class="stat-card cyan">
+      <div class="stat-card green">
         <div class="stat-value">${tips.length}</div>
         <div class="stat-label">Tips & Tricks</div>
       </div>
-      <div class="stat-card green">
+      <div class="stat-card red">
         <div class="stat-value">${resources.length}</div>
         <div class="stat-label">Resources</div>
-      </div>
-      <div class="stat-card red">
-        <div class="stat-value">${activeSocial}/4</div>
-        <div class="stat-label">Social Links</div>
       </div>
     </div>
 
     <div class="dash-quick">
       <h3>Quick Actions</h3>
       <div class="quick-actions">
+        <button class="btn-quick" onclick="switchSection('brands')" style="border-color:var(--neon-purple);color:var(--neon-purple)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          View Brand Deals
+        </button>
         <button class="btn-quick" onclick="switchSection('apps')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Add New App
@@ -263,6 +270,380 @@ function renderDashboard() {
       </div>
     </div>
   `;
+}
+
+/* ══════════════════════════
+   BRAND COLLABS MANAGER
+══════════════════════════ */
+let selectedBrandId = null;
+let currentAdminAttachmentBase64 = null;
+let adminBrandChatInterval = null;
+let activeBrandFilter = 'all';
+
+async function renderBrands() {
+  // Sync latest brands from Supabase
+  let brands = getData('brands');
+  if (window.SupabaseDB) {
+    const cloudBrands = await window.SupabaseDB.getBrands();
+    if (cloudBrands && cloudBrands.length > 0) {
+      brands = cloudBrands;
+      setData('brands', brands);
+    }
+  }
+
+  // Auto-select first brand if none selected
+  if (!selectedBrandId && brands.length > 0) {
+    selectedBrandId = brands[0].id;
+  }
+
+  const selectedBrand = brands.find(b => b.id === selectedBrandId) || brands[0] || null;
+
+  document.getElementById('section-content').innerHTML = `
+    <div class="page-header">
+      <div class="page-title-group">
+        <span class="page-tag">// SPONSORSHIPS &amp; DEALS</span>
+        <h1 class="page-title">Brand <span>Collabs Inbox</span></h1>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <a href="brands.html" target="_blank" class="btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:10px 16px;font-size:0.75rem;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          OPEN BRAND PORTAL
+        </a>
+      </div>
+    </div>
+
+    <div class="brand-collabs-layout">
+      
+      <!-- LEFT: INQUIRIES LIST PANE -->
+      <div class="brand-inquiries-pane">
+        <div class="inquiries-top">
+          <input type="text" class="inquiries-search" id="brand-search-input" placeholder="Search brands or contacts..." oninput="filterBrandList(this.value)" />
+          <div class="inquiries-filters">
+            <button class="filter-chip ${activeBrandFilter === 'all' ? 'active' : ''}" onclick="setBrandFilter('all')">All (${brands.length})</button>
+            <button class="filter-chip ${activeBrandFilter === 'Paid' ? 'active' : ''}" onclick="setBrandFilter('Paid')">💰 Paid</button>
+            <button class="filter-chip ${activeBrandFilter === 'Barter' ? 'active' : ''}" onclick="setBrandFilter('Barter')">🎁 Barter</button>
+            <button class="filter-chip ${activeBrandFilter === 'New' ? 'active' : ''}" onclick="setBrandFilter('New')">🔴 New</button>
+          </div>
+        </div>
+
+        <div class="inquiries-list" id="admin-brands-list">
+          ${renderBrandListHtml(brands)}
+        </div>
+      </div>
+
+      <!-- RIGHT: ACTIVE BRAND DOSSIER & CHAT PANE -->
+      <div class="brand-chat-pane" id="admin-chat-pane">
+        ${selectedBrand ? renderBrandChatPaneHtml(selectedBrand) : `
+          <div style="text-align:center;padding:80px 20px;color:var(--text-muted);">
+            <h3>No brand selected</h3>
+            <p>Select a brand from the left to view campaign details and chat.</p>
+          </div>
+        `}
+      </div>
+
+    </div>
+  `;
+
+  if (selectedBrand) {
+    loadAdminChatMessages(selectedBrand.id);
+    if (adminBrandChatInterval) clearInterval(adminBrandChatInterval);
+    adminBrandChatInterval = setInterval(() => {
+      if (selectedBrandId) loadAdminChatMessages(selectedBrandId, true);
+    }, 4000);
+  }
+}
+
+function renderBrandListHtml(brands) {
+  let filtered = [...brands];
+  if (activeBrandFilter === 'Paid' || activeBrandFilter === 'Barter') {
+    filtered = filtered.filter(b => b.collabType === activeBrandFilter);
+  } else if (activeBrandFilter === 'New') {
+    filtered = filtered.filter(b => (b.status || 'New') === 'New');
+  }
+
+  if (filtered.length === 0) {
+    return `
+      <div style="text-align:center;color:var(--text-muted);padding:30px 10px;font-size:0.85rem;">
+        Koi brand inquiry nahi mili.
+      </div>
+    `;
+  }
+
+  return filtered.map(b => {
+    const isSel = b.id === selectedBrandId;
+    const isPaid = b.collabType === 'Paid';
+    const status = b.status || 'New';
+    const statusClass = status === 'New' ? 'new' : (status === 'In Discussion' ? 'disc' : 'closed');
+    const dateStr = b.createdAt ? new Date(b.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+
+    return `
+      <div class="brand-item-card ${isSel ? 'active' : ''}" onclick="selectBrand('${b.id}')">
+        <div class="brand-card-header">
+          <span class="brand-card-name">${esc(b.brandName)}</span>
+          <div class="brand-card-badges">
+            <span class="${isPaid ? 'badge-paid' : 'badge-barter'}">${isPaid ? '💰 PAID' : '🎁 BARTER'}</span>
+            <span class="badge-status ${statusClass}">${status}</span>
+          </div>
+        </div>
+        <div class="brand-card-meta">
+          <span>👤 ${esc(b.contactPerson)}</span>
+          <span>📅 ${dateStr}</span>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          ${esc(b.campaignType || 'Reel')} • ${esc(b.budget || 'Negotiable')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderBrandChatPaneHtml(b) {
+  const isPaid = b.collabType === 'Paid';
+  const cleanPhone = (b.phone || '').replace(/\D/g, '');
+  const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}?text=Hi%20${encodeURIComponent(b.contactPerson)},%20Adiiitech%20here%20regarding%20your%20collaboration%20inquiry.` : '#';
+
+  return `
+    <div class="brand-dossier-top">
+      <div class="brand-dossier-info">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <h2>${esc(b.brandName)}</h2>
+          <span class="${isPaid ? 'badge-paid' : 'badge-barter'}">${isPaid ? '💰 PAID' : '🎁 BARTER'}</span>
+          <span style="font-size:0.8rem;color:var(--neon-purple);font-weight:700;">${esc(b.budget || 'Negotiable')}</span>
+        </div>
+        <div class="brand-contact-links">
+          <span>👤 <strong>${esc(b.contactPerson)}</strong></span>
+          <span>📧 <a href="mailto:${esc(b.email)}">${esc(b.email)}</a></span>
+          <span>📱 <a href="tel:${esc(b.phone)}">${esc(b.phone)}</a></span>
+          ${b.website && b.website !== 'N/A' ? `<span>🌐 <a href="${esc(b.website)}" target="_blank">${esc(b.website)}</a></span>` : ''}
+        </div>
+      </div>
+
+      <div class="brand-dossier-actions">
+        ${cleanPhone ? `
+          <a href="${waUrl}" target="_blank" class="btn-action-hub btn-wa" style="width:auto;padding:8px 14px;font-size:0.7rem;text-decoration:none;" title="Open WhatsApp Chat">
+            <span>WHATSAPP</span>
+          </a>
+        ` : ''}
+        
+        <select class="form-select" style="width:auto;padding:7px 12px;font-size:0.75rem;" onchange="updateBrandStatusAdmin('${b.id}', this.value)">
+          <option value="New" ${b.status === 'New' ? 'selected' : ''}>🔴 Status: New</option>
+          <option value="In Discussion" ${b.status === 'In Discussion' ? 'selected' : ''}>🟡 In Discussion</option>
+          <option value="Deal Closed" ${b.status === 'Deal Closed' ? 'selected' : ''}>🟢 Deal Closed</option>
+          <option value="Declined" ${b.status === 'Declined' ? 'selected' : ''}>⚪ Declined</option>
+        </select>
+        
+        <button onclick="deleteBrandInquiry('${b.id}')" style="background:rgba(255,58,58,0.15);border:1px solid rgba(255,58,58,0.4);color:var(--neon-red);padding:6px 10px;border-radius:6px;cursor:pointer;" title="Delete this brand inquiry">
+          🗑️
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Messages Stream -->
+    <div class="admin-chat-feed" id="admin-chat-messages-box">
+      <!-- Chat bubbles loaded by JS -->
+    </div>
+
+    <!-- Admin Attachment Preview Bar -->
+    <div class="attachment-preview-bar hidden" id="admin-attachment-preview">
+      <div class="preview-wrap">
+        <img id="admin-attachment-img" src="" alt="Attachment" />
+        <button class="btn-remove-attachment" onclick="clearAdminAttachment()">&times;</button>
+      </div>
+      <span class="attachment-name" id="admin-attachment-name">Attachment ready</span>
+    </div>
+
+    <!-- Admin Reply Input -->
+    <form class="admin-chat-input-bar" onsubmit="sendAdminBrandReply(event, '${b.id}')">
+      <label class="btn-attach" title="Attach screenshot or campaign creative">
+        <input type="file" accept="image/*" onchange="handleAdminChatAttachment(event)" style="display:none;" id="admin-file-inp" />
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      </label>
+
+      <input type="text" class="chat-text-input" id="admin-reply-input" placeholder="Type your reply to ${esc(b.brandName)}..." autocomplete="off" />
+
+      <button type="submit" class="btn-send-msg">
+        <span>REPLY</span>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </form>
+  `;
+}
+
+function selectBrand(brandId) {
+  selectedBrandId = brandId;
+  renderBrands();
+}
+
+function setBrandFilter(filter) {
+  activeBrandFilter = filter;
+  renderBrands();
+}
+
+function filterBrandList(query) {
+  let brands = getData('brands');
+  if (query) {
+    brands = brands.filter(b => 
+      (b.brandName && b.brandName.toLowerCase().includes(query.toLowerCase())) ||
+      (b.contactPerson && b.contactPerson.toLowerCase().includes(query.toLowerCase())) ||
+      (b.email && b.email.toLowerCase().includes(query.toLowerCase()))
+    );
+  }
+  const listEl = document.getElementById('admin-brands-list');
+  if (listEl) listEl.innerHTML = renderBrandListHtml(brands);
+}
+
+async function loadAdminChatMessages(brandId, isBackgroundSync = false) {
+  let messages = [];
+
+  if (window.SupabaseDB) {
+    const cloudMsgs = await window.SupabaseDB.getBrandMessages(brandId);
+    if (cloudMsgs && cloudMsgs.length > 0) {
+      messages = cloudMsgs;
+      localStorage.setItem('adt_brand_messages_' + brandId, JSON.stringify(cloudMsgs));
+    }
+  }
+
+  if (messages.length === 0) {
+    try {
+      messages = JSON.parse(localStorage.getItem('adt_brand_messages_' + brandId) || '[]');
+    } catch(e){}
+  }
+
+  const container = document.getElementById('admin-chat-messages-box');
+  if (!container) return;
+
+  if (messages.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;color:var(--text-muted);padding:40px 20px;font-size:0.88rem;">
+        No messages yet. Send a reply below to start the conversation!
+      </div>
+    `;
+    return;
+  }
+
+  const html = messages.map(m => {
+    const isAdmin = m.sender === 'admin';
+    const senderName = isAdmin ? 'You (Adiiitech)' : 'Brand';
+    const timeStr = m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+    return `
+      <div class="msg-bubble-wrap ${isAdmin ? 'brand' : 'admin'}">
+        <span class="msg-sender-label">${senderName}</span>
+        <div class="msg-bubble">
+          ${m.message ? `<div>${esc(m.message)}</div>` : ''}
+          ${m.attachmentUrl ? `
+            <div class="msg-attachment">
+              <a href="${m.attachmentUrl}" target="_blank" title="View attachment">
+                <img src="${m.attachmentUrl}" alt="Attachment" />
+              </a>
+            </div>
+          ` : ''}
+        </div>
+        <span class="msg-time">${timeStr}</span>
+      </div>
+    `;
+  }).join('');
+
+  const shouldScroll = !isBackgroundSync || (container.scrollHeight - container.scrollTop <= container.clientHeight + 100);
+  container.innerHTML = html;
+
+  if (shouldScroll) {
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+function handleAdminChatAttachment(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    currentAdminAttachmentBase64 = evt.target.result;
+    const previewBar = document.getElementById('admin-attachment-preview');
+    const previewImg = document.getElementById('admin-attachment-img');
+    const nameEl = document.getElementById('admin-attachment-name');
+
+    if (previewImg) previewImg.src = currentAdminAttachmentBase64;
+    if (nameEl) nameEl.textContent = file.name;
+    if (previewBar) previewBar.classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearAdminAttachment() {
+  currentAdminAttachmentBase64 = null;
+  const fileInp = document.getElementById('admin-file-inp');
+  if (fileInp) fileInp.value = '';
+  const previewBar = document.getElementById('admin-attachment-preview');
+  if (previewBar) previewBar.classList.add('hidden');
+}
+
+async function sendAdminBrandReply(e, brandId) {
+  e.preventDefault();
+  const textInp = document.getElementById('admin-reply-input');
+  const text = textInp ? textInp.value.trim() : '';
+
+  if (!text && !currentAdminAttachmentBase64) return;
+
+  const newMsg = {
+    id: Date.now(),
+    brandId: brandId,
+    sender: 'admin',
+    message: text,
+    attachmentUrl: currentAdminAttachmentBase64,
+    createdAt: new Date().toISOString()
+  };
+
+  // 1. Save locally
+  let msgs = [];
+  try { msgs = JSON.parse(localStorage.getItem('adt_brand_messages_' + brandId) || '[]'); } catch(e){}
+  msgs.push(newMsg);
+  localStorage.setItem('adt_brand_messages_' + brandId, JSON.stringify(msgs));
+
+  // 2. Clear input
+  if (textInp) textInp.value = '';
+  const attachmentToSend = currentAdminAttachmentBase64;
+  clearAdminAttachment();
+
+  // 3. Render
+  loadAdminChatMessages(brandId);
+  toast('Reply bhej diya gaya! ✉️');
+
+  // 4. Send to Supabase
+  if (window.SupabaseDB) {
+    await window.SupabaseDB.sendBrandMessage({
+      brandId: brandId,
+      sender: 'admin',
+      message: text,
+      attachmentUrl: attachmentToSend
+    });
+  }
+}
+
+async function updateBrandStatusAdmin(brandId, status) {
+  let brands = getData('brands');
+  const b = brands.find(item => item.id === brandId);
+  if (b) {
+    b.status = status;
+    setData('brands', brands);
+    toast(`Status "${status}" update ho gaya! ✅`);
+
+    if (window.SupabaseDB) {
+      await window.SupabaseDB.updateBrandStatus(brandId, status);
+    }
+    renderBrands();
+  }
+}
+
+function deleteBrandInquiry(brandId) {
+  if (confirm('Kya aap is Brand Inquiry ko delete karna chahte hain?')) {
+    let brands = getData('brands');
+    brands = brands.filter(b => b.id !== brandId);
+    setData('brands', brands);
+    selectedBrandId = brands.length ? brands[0].id : null;
+    toast('Brand inquiry delete ho gayi! 🗑️');
+    renderBrands();
+  }
 }
 
 /* ══════════════════════════
@@ -938,6 +1319,25 @@ function renderSettings() {
       </div>
 
       <div class="settings-card">
+        <div class="settings-card-title">// BRAND COLLAB CONTACT SETTINGS</div>
+        <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem">Ye number brands ko form submit karne par reveal hoga aur WhatsApp message redirect ke liye use hoga.</p>
+        <div class="settings-row">
+          <div class="form-group">
+            <label class="form-label">Creator Calling / Display Phone</label>
+            <input class="form-input" id="st-collab-phone" type="text" value="${esc(s.collabPhone || '+91 9012786022')}" placeholder="+91 9012786022" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">WhatsApp Redirect Number (with country code, no +)</label>
+            <input class="form-input" id="st-collab-wa" type="text" value="${esc(s.collabWhatsapp || '919012786022')}" placeholder="919012786022" />
+          </div>
+        </div>
+        <button class="btn-save-section" onclick="saveCollabContact()" style="background:var(--neon-green);box-shadow:0 0 15px var(--glow-green);color:#06060f;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          SAVE COLLAB CONTACT
+        </button>
+      </div>
+
+      <div class="settings-card">
         <div class="settings-card-title">// ADMIN CREDENTIALS</div>
         <div class="settings-row">
           <div class="form-group" style="grid-column: 1 / -1;">
@@ -1029,6 +1429,27 @@ function saveSettings() {
       social: getData('social'),
       email: getEmail(),
       password: getPassword()
+    });
+  }
+}
+
+function saveCollabContact() {
+  const s = getData('settings');
+  const phoneInp = document.getElementById('st-collab-phone');
+  const waInp = document.getElementById('st-collab-wa');
+  if (phoneInp) s.collabPhone = phoneInp.value.trim() || '+91 9012786022';
+  if (waInp) s.collabWhatsapp = waInp.value.trim().replace(/\D/g, '') || '919012786022';
+  setData('settings', s);
+  toast('Collab contact details save ho gayi! 📞✅');
+
+  if (window.SupabaseDB) {
+    window.SupabaseDB.saveSettings({
+      ...s,
+      social: getData('social'),
+      email: getEmail(),
+      password: getPassword(),
+      collabPhone: s.collabPhone,
+      collabWhatsapp: s.collabWhatsapp
     });
   }
 }
@@ -1265,9 +1686,18 @@ window.deleteResource = deleteResource;
 window.openAddResourceModal = openAddResourceModal;
 window.saveSocial = saveSocial;
 window.saveSettings = saveSettings;
+window.saveCollabContact = saveCollabContact;
 window.saveStats = saveStats;
 window.saveAdminEmail = saveAdminEmail;
 window.changePassword = changePassword;
 window.resetToDefaults = resetToDefaults;
 window.syncAllToSupabase = syncAllToSupabase;
 window.switchSection = switchSection;
+window.selectBrand = selectBrand;
+window.setBrandFilter = setBrandFilter;
+window.filterBrandList = filterBrandList;
+window.handleAdminChatAttachment = handleAdminChatAttachment;
+window.clearAdminAttachment = clearAdminAttachment;
+window.sendAdminBrandReply = sendAdminBrandReply;
+window.updateBrandStatusAdmin = updateBrandStatusAdmin;
+window.deleteBrandInquiry = deleteBrandInquiry;

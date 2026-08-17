@@ -145,9 +145,112 @@ const SupabaseDB = {
     const { data, error } = await supabaseClient.from('settings').upsert({
       id: 'site_config', tagline: s.tagline, about_text1: s.aboutText1, about_text2: s.aboutText2,
       stat_followers: s.statFollowers, stat_apps: s.statApps, stat_tips: s.statTips, social: s.social,
-      admin_email: s.email, admin_password: s.password, updated_at: new Date().toISOString()
+      admin_email: s.email, admin_password: s.password, collab_phone: s.collabPhone || '+919012786022',
+      collab_whatsapp: s.collabWhatsapp || '919012786022', updated_at: new Date().toISOString()
     }).select();
     if (error) throw error; return data && data[0];
+  },
+
+  /* ── BRAND COLLABORATIONS ── */
+  async registerBrand(brand) {
+    if (!supabaseClient) return null;
+    try {
+      const { data, error } = await supabaseClient.from('brands').insert([{
+        id: brand.id,
+        brand_name: brand.brandName,
+        contact_person: brand.contactPerson,
+        email: brand.email,
+        phone: brand.phone,
+        website: brand.website || '',
+        collab_type: brand.collabType || 'Paid',
+        budget: brand.budget || '',
+        campaign_type: brand.campaignType || 'Reel / Short Video',
+        initial_message: brand.initialMessage || '',
+        status: 'New',
+        created_at: brand.createdAt || new Date().toISOString()
+      }]).select();
+      if (error) throw error;
+      return data && data[0];
+    } catch (err) {
+      console.warn('Supabase registerBrand error:', err.message);
+      return null;
+    }
+  },
+
+  async getBrands() {
+    if (!supabaseClient) return null;
+    try {
+      const { data, error } = await supabaseClient.from('brands').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(b => ({
+        id: b.id,
+        brandName: b.brand_name,
+        contactPerson: b.contact_person,
+        email: b.email,
+        phone: b.phone,
+        website: b.website,
+        collabType: b.collab_type,
+        budget: b.budget,
+        campaignType: b.campaign_type,
+        initialMessage: b.initial_message,
+        status: b.status,
+        createdAt: b.created_at
+      }));
+    } catch (err) {
+      console.warn('Supabase getBrands error:', err.message);
+      return null;
+    }
+  },
+
+  async updateBrandStatus(id, status) {
+    if (!supabaseClient) return null;
+    try {
+      const { data, error } = await supabaseClient.from('brands').update({ status }).eq('id', id).select();
+      if (error) throw error;
+      return data && data[0];
+    } catch (err) {
+      console.warn('Supabase updateBrandStatus error:', err.message);
+      return null;
+    }
+  },
+
+  async getBrandMessages(brandId) {
+    if (!supabaseClient) return null;
+    try {
+      const { data, error } = await supabaseClient.from('brand_messages').select('*').eq('brand_id', brandId).order('created_at', { ascending: true });
+      if (error) throw error;
+      return (data || []).map(m => ({
+        id: m.id,
+        brandId: m.brand_id,
+        sender: m.sender,
+        message: m.message,
+        attachmentUrl: m.attachment_url,
+        isRead: m.is_read,
+        createdAt: m.created_at
+      }));
+    } catch (err) {
+      console.warn('Supabase getBrandMessages error:', err.message);
+      return null;
+    }
+  },
+
+  async sendBrandMessage({ brandId, sender, message, attachmentUrl }) {
+    if (!supabaseClient) return null;
+    try {
+      const { data, error } = await supabaseClient.from('brand_messages').insert([{
+        brand_id: brandId,
+        sender: sender,
+        message: message || '',
+        attachment_url: attachmentUrl || null,
+        is_read: sender === 'admin',
+        created_at: new Date().toISOString()
+      }]).select();
+      if (error) throw error;
+      return data && data[0];
+    } catch (err) {
+      console.warn('Supabase sendBrandMessage error:', err.message);
+      return null;
+    }
   }
 };
 
